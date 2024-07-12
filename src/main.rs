@@ -74,7 +74,15 @@ impl serenity::client::EventHandler for Handler {
         };
 
         {
-            let content = format!("{name} {action_verb} {action_prep} <#{ensured_channel_id}> at <t:{timestamp}:R>");
+            let content = format!("
+                ```
+                v: 0
+                g: {guild_id}
+                u: {user_id}
+                s: {session_id}
+                c: {channel_id}
+                ```
+            ").replace("\n                ", "").trim().to_owned();
 
             let result = self.logging_channel_id.send_message(&ctx, CreateMessage::new().content(content)).await;
             match result {
@@ -88,15 +96,7 @@ impl serenity::client::EventHandler for Handler {
         }
 
         {
-            let content = format!("
-                ```
-                v: 0
-                g: {guild_id}
-                u: {user_id}
-                s: {session_id}
-                c: {channel_id}
-                ```
-            ").replace("\n                ", "").trim().to_owned();
+            let content = format!("{name} {action_verb} {action_prep} <#{ensured_channel_id}> at <t:{timestamp}:R>");
 
             let result = self.notify_channel_id.send_message(&ctx, CreateMessage::new().content(content)).await;
             match result {
