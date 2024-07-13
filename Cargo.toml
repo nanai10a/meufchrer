@@ -7,7 +7,6 @@ edition = "2021"
 anyhow = "1.0.86"
 serenity = "0.12.2"
 shuttle-runtime = "0.46.0"
-shuttle-serenity = "0.46.0"
 tokio = "1.38.0"
 tracing = "0.1.40"
 

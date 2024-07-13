@@ -1007,7 +1007,6 @@ dependencies = [
  "git2",
  "serenity",
  "shuttle-runtime",
- "shuttle-serenity",
  "tokio",
  "tracing",
 ]
@@ -1821,16 +1820,6 @@ dependencies = [
  "tokio-util",
  "tonic",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "shuttle-serenity"
-version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2de23e8cc7636b36452488aea2ee6f6884dde68c0e035cb37e4ee7345856300"
-dependencies = [
- "serenity",
- "shuttle-runtime",
 ]
 
 [[package]]
