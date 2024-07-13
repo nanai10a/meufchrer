@@ -1,4 +1,4 @@
-# [meufchrer](https://l.thisworddoesnotexist.com/MVNf)
+# meufchrer
 
 *what?: [meufchrer - This Word Does Not Exist](https://l.thisworddoesnotexist.com/MVNf)*
 
@@ -20,4 +20,6 @@ list secrets on below:
 
 ## what's this
 
-*TODO*
+this is a alternative of vcdiff that is part of [`approvers/rusty-ponyo`](https://github.com/approvers/rusty-ponyo).
+
+*more details are write later...*
