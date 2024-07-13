@@ -15,6 +15,6 @@ jobs:
       with:
         deploy-key: ${{ secrets.SHUTTLE_API_KEY }}
         secrets: |
-          DISCORD_TOKEN     = "${{ secrets.DISCORD_TOKEN }}"
-          NOTIFY_CHANNEL_ID = "${{ secrets.NOTIFY_CHANNEL_ID }}"
-          RECORD_CHANNEL_ID = "${{ secrets.RECORD_CHANNEL_ID }}"
+          DISCORD_TOKEN     = '${{ secrets.DISCORD_TOKEN }}'
+          NOTIFY_CHANNEL_ID = '${{ secrets.NOTIFY_CHANNEL_ID }}'
+          RECORD_CHANNEL_ID = '${{ secrets.RECORD_CHANNEL_ID }}'
