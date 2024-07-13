@@ -1,0 +1,24 @@
+name: cargo
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cargo:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        command:
+        - build
+        - check
+        - clippy
+        - fmt --check
+
+    steps:
+    - uses: actions/checkout@v4
+    - run: cargo ${{ matrix.command }}
