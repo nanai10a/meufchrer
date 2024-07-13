@@ -1,9 +1,16 @@
 use anyhow::Result;
 
-use git2::Repository;
+use git2::{ErrorCode, Repository};
 
 fn main() -> Result<()> {
-    let repo = Repository::open(".")?;
+    let repo = match Repository::open(".") {
+        Ok(o) => o,
+        Err(e) if e.code() == ErrorCode::NotFound => Repository::clone(
+            "https://github.com/nanai10a/meufchrer.git",
+            "/tmp/meufchrer",
+        )?,
+        Err(e) => Err(e)?,
+    };
 
     let hash = repo.head()?.peel_to_commit()?.id();
     let hash_short = hash.to_string().chars().take(7).collect::<String>();
