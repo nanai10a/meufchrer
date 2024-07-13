@@ -25,17 +25,17 @@ async fn serenity(
             .context("`NOTIFY_CHANNEL_ID` is not able to parse!")?,
     );
 
-    let logging_channel_id = ChannelId::new(
+    let record_channel_id = ChannelId::new(
         secrets
-            .get("LOGGING_CHANNEL_ID")
-            .ok_or(anyhow!("`LOGGING_CHANNEL_ID` is not provided!"))?
+            .get("RECORD_CHANNEL_ID")
+            .ok_or(anyhow!("`RECORD_CHANNEL_ID` is not provided!"))?
             .parse()
-            .context("`LOGGING_CHANNEL_ID` is not able to parse!")?,
+            .context("`RECORD_CHANNEL_ID` is not able to parse!")?,
     );
 
     let handler = Handler {
         notify_channel_id,
-        logging_channel_id,
+        record_channel_id,
     };
 
     let intents = serenity::prelude::GatewayIntents::GUILDS
@@ -50,7 +50,7 @@ async fn serenity(
 }
 
 struct Handler {
-    logging_channel_id: ChannelId,
+    record_channel_id: ChannelId,
     notify_channel_id: ChannelId,
 }
 
@@ -68,7 +68,6 @@ impl serenity::client::EventHandler for Handler {
 
         // FIXME: not reasonal seconds, but required
         tokio::time::sleep(std::time::Duration::from_secs(4)).await;
-
 
         let hash_short = env!("GIT_HASH_SHORT");
         let state = if let Some(tagname) = option_env!("GIT_TAG") {
@@ -94,7 +93,7 @@ impl serenity::client::EventHandler for Handler {
 
         tokio::join! {
             self.handle_as_record(&ctx, &old, &new),
-            self.handle_as_notification(&ctx, &old, &new),
+            self.handle_as_notify(&ctx, &old, &new),
         };
     }
 }
@@ -133,7 +132,7 @@ impl Handler {
         .to_owned();
 
         match self
-            .logging_channel_id
+            .record_channel_id
             .send_message(&ctx, CreateMessage::new().content(content))
             .await
         {
@@ -146,13 +145,8 @@ impl Handler {
         }
     }
 
-    #[instrument(skip_all, name = "Handler::handle_as_notification")]
-    async fn handle_as_notification(
-        &self,
-        ctx: &Context,
-        old: &Option<VoiceState>,
-        new: &VoiceState,
-    ) {
+    #[instrument(skip_all, name = "Handler::handle_as_notify")]
+    async fn handle_as_notify(&self, ctx: &Context, old: &Option<VoiceState>, new: &VoiceState) {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
