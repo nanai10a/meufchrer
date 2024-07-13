@@ -1,7 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::anyhow;
-use anyhow::Context as _;
+use anyhow::{anyhow, bail, Context as _, Result};
 
 use serenity::builder::CreateMessage;
 use serenity::model::prelude::{ChannelId, Ready, VoiceState};
@@ -138,18 +137,11 @@ impl Handler {
             .as_secs();
 
         let VoiceState {
-            channel_id,
             member: Some(member),
             ..
         } = &new
         else {
             return error!("member is not present!");
-        };
-
-        let Some(ensured_channel_id) =
-            channel_id.or_else(|| old.clone().map(|vs| vs.channel_id).flatten())
-        else {
-            return error!("cannot ensure channel_id!");
         };
 
         let name = if let Some(nick) = &member.nick {
@@ -158,13 +150,22 @@ impl Handler {
             &member.user.name
         };
 
-        let (verb, prep) = if channel_id.is_some() {
-            ("join", "into")
-        } else {
-            ("leave", "from")
+        let action = match guess_action(old, new) {
+            Ok(Action::Join { into }) => {
+                format!("join into <#{into}>")
+            }
+            Ok(Action::Move { from, into }) => {
+                format!("move from <#{from}> into <#{into}>")
+            }
+            Ok(Action::Leave { from }) => {
+                format!("leave from <#{from}>")
+            }
+            Err(e) => {
+                return error!(error = ?e, "error occurred while guessing action");
+            }
         };
 
-        let content = format!("{name} {verb} {prep} <#{ensured_channel_id}> at <t:{timestamp}:R>");
+        let content = format!("{name} {action} at <t:{timestamp}:R>");
 
         match self
             .notify_channel_id
@@ -179,4 +180,41 @@ impl Handler {
             }
         }
     }
+}
+
+fn guess_action(old: &Option<VoiceState>, new: &VoiceState) -> Result<Action> {
+    match *old {
+        Some(VoiceState {
+            channel_id: Some(from),
+            ..
+        }) => {
+            let Some(into) = new.channel_id else {
+                bail!("");
+            };
+
+            Ok(Action::Move { from, into })
+        }
+        Some(VoiceState {
+            channel_id: None, ..
+        }) => {
+            let Some(from) = new.channel_id else {
+                bail!("");
+            };
+
+            Ok(Action::Leave { from })
+        }
+        None => {
+            let Some(into) = new.channel_id else {
+                bail!("");
+            };
+
+            Ok(Action::Join { into })
+        }
+    }
+}
+
+enum Action {
+    Join { into: ChannelId },
+    Leave { from: ChannelId },
+    Move { from: ChannelId, into: ChannelId },
 }
