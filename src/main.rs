@@ -1,18 +1,35 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::future::IntoFuture;
+use std::net::SocketAddr;
+use std::sync::OnceLock;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Context as _, Result};
 
 use serenity::builder::CreateMessage;
-use serenity::client::Context;
+use serenity::client::{Client, Context};
 use serenity::gateway::ActivityData;
 use serenity::model::prelude::{ActivityType, ChannelId, OnlineStatus, Ready, VoiceState};
 
 use tracing::{debug, error, info, instrument};
 
+use shuttle_runtime::{
+    CustomError as ShuttleCustomError, Error as ShuttleError, Service as ShuttleService,
+};
+
+type ShuttleResult<T> = Result<T, ShuttleError>;
+
+use futures::TryFutureExt as _;
+
+use axum::{routing, Router};
+
+use tokio::net::TcpListener;
+
 #[shuttle_runtime::main]
 async fn serenity(
     #[shuttle_runtime::Secrets] secrets: shuttle_runtime::SecretStore,
-) -> shuttle_serenity::ShuttleSerenity {
+) -> ShuttleResult<impl ShuttleService> {
+    STARTUP_TIME.get_or_init(SystemTime::now);
+
     let token = secrets
         .get("DISCORD_TOKEN")
         .ok_or(anyhow!("`DISCORD_TOKEN` is not provided!"))?;
@@ -41,12 +58,83 @@ async fn serenity(
     let intents = serenity::prelude::GatewayIntents::GUILDS
         | serenity::prelude::GatewayIntents::GUILD_VOICE_STATES;
 
-    let client = serenity::Client::builder(&token, intents)
+    let serenity = serenity::Client::builder(&token, intents)
         .event_handler(handler)
         .await
         .context("failed to initialize Discord client")?;
 
-    Ok(client.into())
+    let axum = Router::new()
+        .route("/", routing::get(console::index))
+        .route("/socket", routing::get(console::socket))
+        .route(
+            "/_htmx/deployments",
+            routing::get(console::htmx::deployments),
+        );
+
+    Ok(Service { serenity, axum })
+}
+
+static STARTUP_TIME: OnceLock<SystemTime> = OnceLock::new();
+
+mod console {
+    use axum::extract::WebSocketUpgrade;
+    use axum::response::IntoResponse;
+    use axum::response::Response;
+
+    pub async fn index() -> impl IntoResponse {
+        Response::builder()
+            .header("content-type", "text/html")
+            .body(include_str!("../assets/index.html").to_owned())
+            .unwrap()
+    }
+
+    pub async fn socket(wsu: WebSocketUpgrade) -> impl IntoResponse {
+        wsu.on_upgrade(|ws| async {
+            // TODO: ...needs this?
+        })
+    }
+
+    pub mod htmx {
+        use super::*;
+
+        use std::time::SystemTime;
+
+        pub async fn deployments() -> impl IntoResponse {
+            let uptime = crate::duration_display(
+                SystemTime::now()
+                    .duration_since(*crate::STARTUP_TIME.get().unwrap())
+                    .unwrap(),
+            );
+
+            Response::builder()
+                .header("content-type", "text/html")
+                .body(format!(
+                    "<p>tag: {tag}</p><p>hash: <a href=\"https://github.com/nanai10a/meufchrer/tree/{hash}\">{hash}</a></p><p>uptime: {uptime}</p>",
+                    tag = option_env!("GIT_TAG").unwrap_or("{no tag}"),
+                    hash = env!("GIT_HASH"),
+                ))
+                .unwrap()
+        }
+    }
+}
+
+struct Service {
+    axum: Router,
+    serenity: Client,
+}
+
+#[serenity::async_trait]
+impl ShuttleService for Service {
+    async fn bind(mut self, addr: SocketAddr) -> ShuttleResult<()> {
+        let listener = TcpListener::bind(addr).await.unwrap();
+
+        let results = tokio::join! {
+            self.serenity.start_autosharded().map_err(ShuttleCustomError::new),
+            axum::serve(listener, self.axum).into_future().map_err(ShuttleCustomError::new),
+        };
+
+        Ok(())
+    }
 }
 
 struct Handler {
@@ -247,4 +335,37 @@ enum Action {
     Join { into: ChannelId },
     Leave { from: ChannelId },
     Move { from: ChannelId, into: ChannelId },
+}
+
+fn duration_display(duration: Duration) -> String {
+    let secs = duration.as_secs();
+    let mins = secs / 60;
+    let hours = mins / 60;
+    let days = hours / 24;
+    let weeks = days / 7;
+    let months = weeks / 4;
+    let years = months / 12;
+
+    [
+        (years, "years", 0),
+        (months, "months", 12),
+        (weeks, "weeks", 4),
+        (days, "days", 4),
+        (hours, "hours", 24),
+        (mins, "mins", 60),
+        (secs, "secs", 60),
+    ]
+    .windows(2)
+    .find_map(|window| {
+        let [(n0, u0, _), (n1, u1, q1)] = window else {
+            unreachable!();
+        };
+
+        if *n0 == 0 {
+            return None;
+        }
+
+        Some(format!("{n0} {u0}, {n1} {u1}", n1 = n1 % q1))
+    })
+    .unwrap_or(format!("{:.3} secs", duration.as_secs_f64()))
 }

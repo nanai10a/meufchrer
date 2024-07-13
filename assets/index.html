@@ -1,0 +1,12 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2.1.1/out/water.min.css" integrity="sha256-QST90Wzz4PEr5KlclQaOCsjc00FTyf86Wrj41oqZB4w=" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.1/dist/htmx.min.js" integrity="sha256-bUqqSw0+i0yR+Nl7kqNhoZsb1FRN6j9mj9w+YqY5ld8=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx-ext-ws@2.0.0/ws.min.js"></script>
+  </head>
+  <body>
+    <h1><a href="https://github.com/nanai10a/meufchrer">meufchrer</a> status</h1>
+    <h2>Deployments</h2>
+    <div hx-get="/_htmx/deployments" hx-trigger="revealed"></div>
+  </body>
+</html>
