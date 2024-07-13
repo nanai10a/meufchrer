@@ -66,6 +66,18 @@ impl serenity::client::EventHandler for Handler {
             "handler is ready!",
         };
 
+        match self
+            .record_channel_id
+            .send_message(
+                &ctx,
+                CreateMessage::new().content(format!("```\ndeployed: {}\n```", env!("GIT_HASH"))),
+            )
+            .await
+        {
+            Ok(_) => (),
+            Err(e) => error!(error = ?e, "error occurred while sending message"),
+        }
+
         // FIXME: not reasonal seconds, but required
         tokio::time::sleep(std::time::Duration::from_secs(4)).await;
 
