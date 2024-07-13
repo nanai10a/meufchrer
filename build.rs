@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use anyhow::Result;
 
 use git2::{ErrorCode, Repository};
@@ -7,7 +9,10 @@ fn main() -> Result<()> {
         Ok(o) => o,
         Err(e) if e.code() == ErrorCode::NotFound => Repository::clone(
             "https://github.com/nanai10a/meufchrer.git",
-            "/tmp/meufchrer",
+            format!(
+                "/tmp/meufchrer-{}",
+                SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
+            ),
         )?,
         Err(e) => Err(e)?,
     };
