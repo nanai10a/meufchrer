@@ -26,7 +26,7 @@ fn main() -> Result<()> {
     let tagname = repo
         .tag_names(None)?
         .iter()
-        .filter_map(|optional_name| optional_name)
+        .flatten()
         .find(|name| {
             let Ok(reference) = repo.revparse_single(name) else {
                 return false;
