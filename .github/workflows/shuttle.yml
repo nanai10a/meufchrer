@@ -2,6 +2,7 @@ name: shuttle
 
 on:
   push:
+    tags:
     branches:
     - main
 
