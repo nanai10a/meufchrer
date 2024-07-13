@@ -69,11 +69,19 @@ impl serenity::client::EventHandler for Handler {
         // FIXME: not reasonal seconds, but required
         tokio::time::sleep(std::time::Duration::from_secs(4)).await;
 
+
+        let hash_short = env!("GIT_HASH_SHORT");
+        let state = if let Some(tagname) = option_env!("GIT_TAG") {
+            format!("Running nanai10a/meufchrer @ {tagname} ({hash_short})")
+        } else {
+            format!("Running nanai10a/meufchrer @ {{no tag}} ({hash_short})")
+        };
+
         let activity = ActivityData {
             // FIXME: this undisplayed but unallown empty string, maybe
             name: "{activity_name}".to_owned(),
             kind: ActivityType::Custom,
-            state: Some("Running nanai10a/meufchrer @ 0.1.0".to_owned()),
+            state: Some(state),
             url: None,
         };
 
