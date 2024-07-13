@@ -91,16 +91,27 @@ impl serenity::client::EventHandler for Handler {
     async fn voice_state_update(&self, ctx: Context, old: Option<VoiceState>, new: VoiceState) {
         debug!(kind = "voice_state_update", "received gateway event");
 
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
         tokio::join! {
-            self.handle_as_record(&ctx, &old, &new),
-            self.handle_as_notify(&ctx, &old, &new),
+            self.handle_as_record(&ctx, &old, &new, timestamp),
+            self.handle_as_notify(&ctx, &old, &new, timestamp),
         };
     }
 }
 
 impl Handler {
     #[instrument(skip_all, name = "Handler::handle_as_record")]
-    async fn handle_as_record(&self, ctx: &Context, _: &Option<VoiceState>, new: &VoiceState) {
+    async fn handle_as_record(
+        &self,
+        ctx: &Context,
+        _: &Option<VoiceState>,
+        new: &VoiceState,
+        timestamp: u64,
+    ) {
         let VoiceState {
             guild_id: Some(guild_id),
             channel_id,
@@ -120,6 +131,7 @@ impl Handler {
             "
                 ```
                 v: 0
+                t: {timestamp}
                 g: {guild_id}
                 u: {user_id}
                 s: {session_id}
@@ -146,12 +158,13 @@ impl Handler {
     }
 
     #[instrument(skip_all, name = "Handler::handle_as_notify")]
-    async fn handle_as_notify(&self, ctx: &Context, old: &Option<VoiceState>, new: &VoiceState) {
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-
+    async fn handle_as_notify(
+        &self,
+        ctx: &Context,
+        old: &Option<VoiceState>,
+        new: &VoiceState,
+        timestamp: u64,
+    ) {
         let VoiceState {
             member: Some(member),
             ..
