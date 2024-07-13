@@ -227,7 +227,10 @@ impl Handler {
 }
 
 fn guess_action(old: &Option<VoiceState>, new: &VoiceState) -> Result<Option<Action>> {
-    if let Some(true) = old.as_ref().map(|old| old.session_id == new.session_id) {
+    if let Some(true) = old
+        .as_ref()
+        .map(|old| old.session_id == new.session_id && old.channel_id == new.channel_id)
+    {
         return Ok(None);
     }
 
