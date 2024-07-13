@@ -108,9 +108,15 @@ impl serenity::client::EventHandler for Handler {
             .unwrap()
             .as_secs();
 
+        let action = match guess_action(&old, &new) {
+            Ok(Some(o)) => o,
+            Ok(None) => return, // nothing to do
+            Err(e) => return error!(error = ?e, "error occurred while guessing action"),
+        };
+
         tokio::join! {
-            self.handle_as_record(&ctx, &old, &new, timestamp),
-            self.handle_as_notify(&ctx, &old, &new, timestamp),
+            self.handle_as_record(&ctx, &old, &new, timestamp, &action),
+            self.handle_as_notify(&ctx, &old, &new, timestamp, &action),
         };
     }
 }
@@ -123,6 +129,7 @@ impl Handler {
         _: &Option<VoiceState>,
         new: &VoiceState,
         timestamp: u64,
+        _: &Action,
     ) {
         let VoiceState {
             guild_id: Some(guild_id),
@@ -173,9 +180,10 @@ impl Handler {
     async fn handle_as_notify(
         &self,
         ctx: &Context,
-        old: &Option<VoiceState>,
+        _: &Option<VoiceState>,
         new: &VoiceState,
         timestamp: u64,
+        action: &Action,
     ) {
         let VoiceState {
             member: Some(member),
@@ -191,22 +199,10 @@ impl Handler {
             &member.user.name
         };
 
-        let action = match guess_action(old, new) {
-            Ok(Some(Action::Join { into })) => {
-                format!("join into <#{into}>")
-            }
-            Ok(Some(Action::Move { from, into })) => {
-                format!("move from <#{from}> into <#{into}>")
-            }
-            Ok(Some(Action::Leave { from })) => {
-                format!("leave from <#{from}>")
-            }
-            Ok(None) => {
-                return; // nothing to do
-            }
-            Err(e) => {
-                return error!(error = ?e, "error occurred while guessing action");
-            }
+        let action = match action {
+            Action::Join { into } => format!("join into <#{into}>"),
+            Action::Move { from, into } => format!("move from <#{from}> into <#{into}>"),
+            Action::Leave { from } => format!("leave from <#{from}>"),
         };
 
         let content = format!("{name} {action} at <t:{timestamp}:R>");
