@@ -180,14 +180,17 @@ impl Handler {
         };
 
         let action = match guess_action(old, new) {
-            Ok(Action::Join { into }) => {
+            Ok(Some(Action::Join { into })) => {
                 format!("join into <#{into}>")
             }
-            Ok(Action::Move { from, into }) => {
+            Ok(Some(Action::Move { from, into })) => {
                 format!("move from <#{from}> into <#{into}>")
             }
-            Ok(Action::Leave { from }) => {
+            Ok(Some(Action::Leave { from })) => {
                 format!("leave from <#{from}>")
+            }
+            Ok(None) => {
+                return; // nothing to do
             }
             Err(e) => {
                 return error!(error = ?e, "error occurred while guessing action");
@@ -211,13 +214,17 @@ impl Handler {
     }
 }
 
-fn guess_action(old: &Option<VoiceState>, new: &VoiceState) -> Result<Action> {
+fn guess_action(old: &Option<VoiceState>, new: &VoiceState) -> Result<Option<Action>> {
+    if let Some(true) = old.as_ref().map(|old| old.session_id == new.session_id) {
+        return Ok(None);
+    }
+
     let pattern = (old.as_ref().map(|vs| vs.channel_id), new.channel_id);
 
     match pattern {
-        (Some(Some(from)), Some(into)) => Ok(Action::Move { from, into }),
-        (Some(Some(from)), None) => Ok(Action::Leave { from }),
-        (None, Some(into)) => Ok(Action::Join { into }),
+        (Some(Some(from)), Some(into)) => Ok(Some(Action::Move { from, into })),
+        (Some(Some(from)), None) => Ok(Some(Action::Leave { from })),
+        (None, Some(into)) => Ok(Some(Action::Join { into })),
 
         (Some(None), Some(_)) => Err(anyhow!("unexpected pattern: {pattern:?}")),
         (Some(None), None) => Err(anyhow!("unexpected pattern: {pattern:?}")),
