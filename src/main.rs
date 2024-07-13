@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::{anyhow, bail, Context as _, Result};
+use anyhow::{anyhow, Context as _, Result};
 
 use serenity::builder::CreateMessage;
 use serenity::model::prelude::{ChannelId, Ready, VoiceState};
@@ -183,33 +183,16 @@ impl Handler {
 }
 
 fn guess_action(old: &Option<VoiceState>, new: &VoiceState) -> Result<Action> {
-    match *old {
-        Some(VoiceState {
-            channel_id: Some(from),
-            ..
-        }) => {
-            let Some(into) = new.channel_id else {
-                bail!("");
-            };
+    let pattern = (old.as_ref().map(|vs| vs.channel_id), new.channel_id);
 
-            Ok(Action::Move { from, into })
-        }
-        Some(VoiceState {
-            channel_id: None, ..
-        }) => {
-            let Some(from) = new.channel_id else {
-                bail!("");
-            };
+    match pattern {
+        (Some(Some(from)), Some(into)) => Ok(Action::Move { from, into }),
+        (Some(Some(from)), None) => Ok(Action::Leave { from }),
+        (None, Some(into)) => Ok(Action::Join { into }),
 
-            Ok(Action::Leave { from })
-        }
-        None => {
-            let Some(into) = new.channel_id else {
-                bail!("");
-            };
-
-            Ok(Action::Join { into })
-        }
+        (Some(None), Some(_)) => Err(anyhow!("unexpected pattern: {pattern:?}")),
+        (Some(None), None) => Err(anyhow!("unexpected pattern: {pattern:?}")),
+        (None, None) => Err(anyhow!("unexpected pattern: {pattern:?}")),
     }
 }
 
