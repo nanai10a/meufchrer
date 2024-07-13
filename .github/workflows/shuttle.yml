@@ -2,9 +2,8 @@ name: shuttle
 
 on:
   push:
-    tags:
-    branches:
-    - main
+    tags: ['*']
+    branches: [main]
 
 jobs:
   deploy:
