@@ -1,0 +1,19 @@
+name: shuttle
+
+on:
+  push:
+    branches:
+    - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: shuttle-hq/deploy-action@main
+      with:
+        deploy-key: ${{ secrets.SHUTTLE_API_KEY }}
+        secrets: |
+          DISCORD_TOKEN     = "${{ secrets.DISCORD_TOKEN }}"
+          NOTIFY_CHANNEL_ID = "${{ secrets.NOTIFY_CHANNEL_ID }}"
+          RECORD_CHANNEL_ID = "${{ secrets.RECORD_CHANNEL_ID }}"
