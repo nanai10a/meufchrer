@@ -8,9 +8,22 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  cargo:
-    runs-on: ubuntu-latest
+  cargo-fmt:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+        - macos-latest
+        - ubuntu-latest
+        - windows-latest
 
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - run: cargo fmt --check
+
+  cargo:
     strategy:
       fail-fast: false
       matrix:
@@ -18,8 +31,51 @@ jobs:
         - build
         - check
         - clippy
-        - fmt --check
+
+        # ref. https://rust-lang.github.io/rustup-components-history/
+        target:
+        # Windows
+        - aarch64-pc-windows-msvc # Tier 2
+        - x86_64-pc-windows-msvc # Tier 1
+        # macOS
+        - aarch64-apple-darwin # Tier 2
+        - x86_64-apple-darwin # Tier 1
+        # Linux
+        - aarch64-unknown-linux-gnu # Tier 1
+        - x86_64-unknown-linux-gnu # Tier 1
+
+        include:
+        - target: aarch64-pc-windows-msvc
+          os: windows-latest
+          prepare: echo nothing to do
+
+        - target: x86_64-pc-windows-msvc
+          os: windows-latest
+          prepare: echo nothing to do
+
+        - target: aarch64-apple-darwin
+          os: macos-latest
+          prepare: echo nothing to do
+
+        - target: x86_64-apple-darwin
+          os: macos-latest
+          prepare: echo nothing to do
+
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-latest
+          prepare: |
+            sudo apt-get install gcc-aarch64-linux-gnu
+            mkdir -p .cargo
+            echo 'target.aarch64-unknown-linux-gnu.linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
+
+        - target: x86_64-unknown-linux-gnu
+          os: ubuntu-latest
+          prepare: echo nothing to do
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v4
-    - run: cargo ${{ matrix.command }}
+    - run: ${{ matrix.prepare }}
+    - run: rustup target add ${{ matrix.target }}
+    - run: cargo ${{ matrix.command }} --target ${{ matrix.target }}
