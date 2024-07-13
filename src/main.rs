@@ -3,8 +3,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{anyhow, Context as _, Result};
 
 use serenity::builder::CreateMessage;
-use serenity::model::prelude::{ChannelId, Ready, VoiceState};
-use serenity::prelude::Context;
+use serenity::client::Context;
+use serenity::gateway::ActivityData;
+use serenity::model::prelude::{ActivityType, ChannelId, OnlineStatus, Ready, VoiceState};
 
 use tracing::{debug, error, info, instrument};
 
@@ -56,7 +57,7 @@ struct Handler {
 #[serenity::async_trait]
 impl serenity::client::EventHandler for Handler {
     #[instrument(skip_all, name = "Handler::ready")]
-    async fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, ctx: Context, ready: Ready) {
         info! {
             ?ready.version,
             ?ready.application.id,
@@ -64,6 +65,19 @@ impl serenity::client::EventHandler for Handler {
             ready.user.tag = ?ready.user.tag(),
             "handler is ready!",
         };
+
+        // FIXME: not reasonal seconds, but required
+        tokio::time::sleep(std::time::Duration::from_secs(4)).await;
+
+        let activity = ActivityData {
+            // FIXME: this undisplayed but unallown empty string, maybe
+            name: "{activity_name}".to_owned(),
+            kind: ActivityType::Custom,
+            state: Some("Running nanai10a/meufchrer @ 0.1.0".to_owned()),
+            url: None,
+        };
+
+        ctx.shard.set_presence(Some(activity), OnlineStatus::Online);
     }
 
     #[instrument(skip_all, name = "Handler::voice_state_update")]
