@@ -58,12 +58,12 @@ async fn serenity(
     let intents = serenity::prelude::GatewayIntents::GUILDS
         | serenity::prelude::GatewayIntents::GUILD_VOICE_STATES;
 
-    let serenity = serenity::Client::builder(&token, intents)
+    let client = serenity::Client::builder(&token, intents)
         .event_handler(handler)
         .await
         .context("failed to initialize Discord client")?;
 
-    let axum = Router::new()
+    let router = Router::new()
         .route("/", routing::get(console::index))
         .route("/socket", routing::get(console::socket))
         .route(
@@ -71,7 +71,7 @@ async fn serenity(
             routing::get(console::htmx::deployments),
         );
 
-    Ok(Service { serenity, axum })
+    Ok(Service { client, router })
 }
 
 static STARTUP_TIME: OnceLock<SystemTime> = OnceLock::new();
@@ -119,21 +119,35 @@ mod console {
 }
 
 struct Service {
-    axum: Router,
-    serenity: Client,
+    client: Client,
+    router: Router,
 }
 
 #[serenity::async_trait]
 impl ShuttleService for Service {
-    async fn bind(mut self, addr: SocketAddr) -> ShuttleResult<()> {
-        let listener = TcpListener::bind(addr).await.unwrap();
+    async fn bind(self, addr: SocketAddr) -> ShuttleResult<()> {
+        let Self { mut client, router } = self;
 
-        let results = tokio::join! {
-            self.serenity.start_autosharded().map_err(ShuttleCustomError::new),
-            axum::serve(listener, self.axum).into_future().map_err(ShuttleCustomError::new),
-        };
+        let serenity = tokio::spawn(async move {
+            client
+                .start_autosharded()
+                .map_err(ShuttleCustomError::new)
+                .await
+        })
+        .map_err(ShuttleCustomError::new);
 
-        Ok(())
+        let axum = tokio::spawn(async move {
+            axum::serve(TcpListener::bind(addr).await?, router)
+                .into_future()
+                .map_err(ShuttleCustomError::new)
+                .await
+        })
+        .map_err(ShuttleCustomError::new);
+
+        tokio::select! {
+            Ok(Err(e)) | Err(e) = axum => Err(e)?,
+            Ok(Err(e)) | Err(e) = serenity => Err(e)?,
+        }
     }
 }
 
