@@ -324,24 +324,28 @@ impl Handler {
     }
 }
 
+#[rustfmt::skip]
 fn guess_action(old: &Option<VoiceState>, new: &VoiceState) -> Result<Option<Action>> {
-    if let Some(true) = old
-        .as_ref()
-        .map(|old| old.session_id == new.session_id && old.channel_id == new.channel_id)
-    {
-        return Ok(None);
-    }
+    let is_same_session = old.as_ref().map(|old| old.session_id == new.session_id).unwrap_or(false);
+    let is_same_channel_id = old.as_ref().map(|old| old.channel_id == new.channel_id).unwrap_or(false);
+    let old_channel_id = old.as_ref().map(|old| old.channel_id).flatten();
+    let new_channel_id = new.channel_id;
 
-    let pattern = (old.as_ref().map(|vs| vs.channel_id), new.channel_id);
+    match (is_same_session, is_same_channel_id, old_channel_id, new_channel_id) {
+        (false, false, None,       Some(into)) => Ok(Some(Action::Join { into })),
+        (false, false, Some(from), Some(into)) => Ok(Some(Action::Move { from, into })),
+        (false, true,  Some(_),    Some(_)   ) => Ok(None /* reconnection */),
+        (true,  false, Some(from), None      ) => Ok(Some(Action::Leave { from })),
+        (true,  false, Some(from), Some(into)) => Ok(Some(Action::Move { from, into })),
+        (true,  true,  Some(_),    Some(_)   ) => Ok(None /* other states changed */),
 
-    match pattern {
-        (Some(Some(from)), Some(into)) => Ok(Some(Action::Move { from, into })),
-        (Some(Some(from)), None) => Ok(Some(Action::Leave { from })),
-        (None, Some(into)) => Ok(Some(Action::Join { into })),
+        (true,  false, None,       Some(_)   ) => Err(anyhow!("unexpected pattern")),
+        (false, false, Some(_),    None      ) => Err(anyhow!("unexpected pattern")),
+        (_,     true,  None,       None      ) => Err(anyhow!("unexpected pattern")),
 
-        (Some(None), Some(_)) => Err(anyhow!("unexpected pattern: {pattern:?}")),
-        (Some(None), None) => Err(anyhow!("unexpected pattern: {pattern:?}")),
-        (None, None) => Err(anyhow!("unexpected pattern: {pattern:?}")),
+        (_,     true,  None,       Some(_)   ) => unreachable!(),
+        (_,     true,  Some(_),    None      ) => unreachable!(),
+        (_,     false, None,       None      ) => unreachable!(),
     }
 }
 
