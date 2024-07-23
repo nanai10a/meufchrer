@@ -303,7 +303,7 @@ impl Handler {
         let action = match action {
             Action::Join { into } => format!("joined into <#{into}>"),
             Action::Move { from, into } => format!("moved from <#{from}> into <#{into}>"),
-            Action::Leave { from } => format!("leaved from <#{from}>"),
+            Action::Leave { from } => format!("left from <#{from}>"),
         };
 
         let content = format!("{name} {action} at <t:{timestamp}:R>");
