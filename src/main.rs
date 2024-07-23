@@ -301,9 +301,9 @@ impl Handler {
         };
 
         let action = match action {
-            Action::Join { into } => format!("joined into <#{into}>"),
-            Action::Move { from, into } => format!("moved from <#{from}> into <#{into}>"),
-            Action::Leave { from } => format!("left from <#{from}>"),
+            Action::Joined { into } => format!("joined into <#{into}>"),
+            Action::Moved { from, into } => format!("moved from <#{from}> into <#{into}>"),
+            Action::Left { from } => format!("left from <#{from}>"),
         };
 
         let content = format!("{name} {action} at <t:{timestamp}:R>");
@@ -330,17 +330,17 @@ fn guess_action(old: &Option<VoiceState>, new: &VoiceState) -> Option<Action> {
     let new_channel_id = new.channel_id;
 
     match (old_channel_id, new_channel_id) {
-        (None, Some(into)) if !is_same_session => Some(Action::Join { into }),
-        (Some(from), None) if is_same_session => Some(Action::Leave { from }),
-        (Some(from), Some(into)) if from == into => Some(Action::Move { from, into }),
+        (None, Some(into)) if !is_same_session => Some(Action::Joined { into }),
+        (Some(from), None) if is_same_session => Some(Action::Left { from }),
+        (Some(from), Some(into)) if from == into => Some(Action::Moved { from, into }),
         _ => None,
     }
 }
 
 enum Action {
-    Join { into: ChannelId },
-    Leave { from: ChannelId },
-    Move { from: ChannelId, into: ChannelId },
+    Joined { into: ChannelId },
+    Left { from: ChannelId },
+    Moved { from: ChannelId, into: ChannelId },
 }
 
 fn duration_display(duration: Duration) -> String {
