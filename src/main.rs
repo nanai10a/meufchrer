@@ -211,9 +211,8 @@ impl serenity::client::EventHandler for Handler {
             .as_secs();
 
         let action = match guess_action(&old, &new) {
-            Ok(Some(o)) => o,
-            Ok(None) => return, // nothing to do
-            Err(e) => return error!(error = ?e, "error occurred while guessing action"),
+            Some(o) => o,
+            None => return, // nothing to do
         };
 
         tokio::join! {
@@ -324,28 +323,17 @@ impl Handler {
     }
 }
 
-#[rustfmt::skip]
-fn guess_action(old: &Option<VoiceState>, new: &VoiceState) -> Result<Option<Action>> {
-    let is_same_session = old.as_ref().map(|old| old.session_id == new.session_id).unwrap_or(false);
-    let is_same_channel_id = old.as_ref().map(|old| old.channel_id == new.channel_id).unwrap_or(false);
+fn guess_action(old: &Option<VoiceState>, new: &VoiceState) -> Option<Action> {
+    let is_same_session = old.as_ref().map(|old| &old.session_id) == Some(&new.session_id);
+
     let old_channel_id = old.as_ref().map(|old| old.channel_id).flatten();
     let new_channel_id = new.channel_id;
 
-    match (is_same_session, is_same_channel_id, old_channel_id, new_channel_id) {
-        (false, false, None,       Some(into)) => Ok(Some(Action::Join { into })),
-        (false, false, Some(from), Some(into)) => Ok(Some(Action::Move { from, into })),
-        (false, true,  Some(_),    Some(_)   ) => Ok(None /* reconnection */),
-        (true,  false, Some(from), None      ) => Ok(Some(Action::Leave { from })),
-        (true,  false, Some(from), Some(into)) => Ok(Some(Action::Move { from, into })),
-        (true,  true,  Some(_),    Some(_)   ) => Ok(None /* other states changed */),
-
-        (true,  false, None,       Some(_)   ) => Err(anyhow!("unexpected pattern")),
-        (false, false, Some(_),    None      ) => Err(anyhow!("unexpected pattern")),
-        (_,     true,  None,       None      ) => Err(anyhow!("unexpected pattern")),
-
-        (_,     true,  None,       Some(_)   ) => unreachable!(),
-        (_,     true,  Some(_),    None      ) => unreachable!(),
-        (_,     false, None,       None      ) => unreachable!(),
+    match (old_channel_id, new_channel_id) {
+        (None, Some(into)) if !is_same_session => Some(Action::Join { into }),
+        (Some(from), None) if is_same_session => Some(Action::Leave { from }),
+        (Some(from), Some(into)) if from == into => Some(Action::Move { from, into }),
+        _ => None,
     }
 }
 
