@@ -326,7 +326,7 @@ impl Handler {
 fn guess_action(old: &Option<VoiceState>, new: &VoiceState) -> Option<Action> {
     let is_same_session = old.as_ref().map(|old| &old.session_id) == Some(&new.session_id);
 
-    let old_channel_id = old.as_ref().map(|old| old.channel_id).flatten();
+    let old_channel_id = old.as_ref().and_then(|old| old.channel_id);
     let new_channel_id = new.channel_id;
 
     match (old_channel_id, new_channel_id) {
