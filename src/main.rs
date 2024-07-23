@@ -89,7 +89,7 @@ mod console {
     }
 
     pub async fn socket(wsu: WebSocketUpgrade) -> impl IntoResponse {
-        wsu.on_upgrade(|ws| async {
+        wsu.on_upgrade(|_| async {
             // TODO: ...needs this?
         })
     }
