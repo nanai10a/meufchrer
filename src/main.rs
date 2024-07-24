@@ -334,7 +334,7 @@ fn guess_action(old: &Option<VoiceState>, new: &VoiceState) -> Option<Action> {
     match (old_channel_id, new_channel_id) {
         (None, Some(into)) if !is_same_session => Some(Action::Joined { into }),
         (Some(from), None) if is_same_session => Some(Action::Left { from }),
-        (Some(from), Some(into)) if from == into => Some(Action::Moved { from, into }),
+        (Some(from), Some(into)) if from != into => Some(Action::Moved { from, into }),
         _ => None,
     }
 }
