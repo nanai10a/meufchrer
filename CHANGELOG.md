@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/nanai10a/meufchrer/compare/v0.1.0...v0.1.1) (2025-04-10)
+
+
+### Bug Fixes
+
+* incorrect guard ([81fd320](https://github.com/nanai10a/meufchrer/commit/81fd320f8da511baffecaadb745955e87558c74f))
+
 ## 0.1.0 (2024-07-23)
 
 
